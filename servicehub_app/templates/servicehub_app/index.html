@@ -1,0 +1,373 @@
+{% extends 'servicehub_app/base.html' %}
+{% block content %}
+    <style>
+    /* 1. This makes the suggestions look clean and overlayed */
+    #suggestions-box {
+        background: white;
+        max-height: 250px;
+        overflow-y: auto;
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    #suggestions-box .list-group-item {
+        cursor: pointer;
+        border: none;
+        color: #212529;
+        padding: 12px 20px;
+        font-weight: 500;
+    }
+
+    #suggestions-box .list-group-item:hover {
+        background-color: #f0f7ff;
+        color: #0d6efd;
+    }
+
+    /* 2. Custom styling to make the search button stand out */
+    .btn-search-highlight {
+        background-color: #ffc107 !important; /* Bright Amber/Yellow */
+        color: #000 !important;
+        border: none;
+        font-weight: 700 !important;
+        transition: all 0.3s ease;
+    }
+
+    .btn-search-highlight:hover {
+        background-color: #e0a800 !important;
+        transform: scale(1.05);
+    }
+</style>
+<div class="hero-section text-center mb-5 p-5 bg-primary text-white rounded-4 shadow">
+    <h1 class="display-4 fw-bold">Find Trusted Local Experts</h1>
+    <p class="lead mb-4">Connecting you with verified pros within a 3km radius.</p>
+
+    <div class="position-relative col-12 col-md-8 col-lg-6 mx-auto">
+        <div class="input-group mb-0 shadow-sm rounded-pill overflow-hidden bg-white p-1">
+            <input type="text" id="service-search"
+                   class="form-control border-0 ps-4 py-2"
+                   placeholder="What service do you need?"
+                   oninput="getSuggestions(this.value)"
+                   autocomplete="off"
+                   style="color: #333;">
+
+            <button class="btn btn-search-highlight px-4 rounded-pill" onclick="findProviders()">
+                <i class="bi bi-search me-2"></i>Search
+            </button>
+        </div>
+
+        <div id="suggestions-box"
+             class="list-group position-absolute w-100 shadow-lg mt-2 rounded-3 d-none text-start"
+             style="z-index: 1050; left: 0;">
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold">Available Providers</h3>
+        <span id="results-count" class="badge bg-secondary"></span>
+    </div>
+
+   <div id="providers-results" class="row">
+    <div class="col-12 text-center py-5">
+        <p class="text-muted">Click the button above to see providers near you.</p>
+    </div>
+</div>
+
+<div class="modal fade" id="requestModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header">
+                <h5 class="fw-bold">Request Service from <span id="req-provider-name"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Describe the issue</label>
+                    <textarea id="service-description" class="form-control rounded-3" rows="3" placeholder="Explain the problem..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Upload a Photo (Optional)</label>
+                    <input type="file" id="problem-photo" class="form-control rounded-3" accept="image/*">
+                    <div class="form-text">A photo helps the pro bring the right tools.</div>
+                </div>
+                <input type="hidden" id="req-provider-id">
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-primary w-100 rounded-pill py-2" onclick="submitRequest()">Send Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+function getSuggestions(query) {
+    const box = document.getElementById('suggestions-box');
+
+    if (query.length < 2) {
+        box.classList.add('d-none');
+        return;
+    }
+
+    fetch(`/api/service-suggestions/?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.length > 0) {
+                box.innerHTML = data.map(service => `
+                    <button class="list-group-item list-group-item-action border-0 py-2"
+                            onclick="selectSuggestion('${service}')">
+                        <i class="bi bi-search small text-muted me-2"></i>${service}
+                    </button>
+                `).join('');
+                box.classList.remove('d-none');
+            } else {
+                box.classList.add('d-none');
+            }
+        });
+}
+
+function selectSuggestion(val) {
+    document.getElementById('service-search').value = val;
+    document.getElementById('suggestions-box').classList.add('d-none');
+    findProviders(); // Automatically trigger the search once selected
+}
+
+// Close suggestions if user clicks outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.position-relative')) {
+        document.getElementById('suggestions-box').classList.add('d-none');
+    }
+});
+// Load history when page opens
+document.addEventListener('DOMContentLoaded', fetchBookings);
+// 1. Define the function globally so the onclick can find it
+function findProviders() {
+    const searchInput = document.getElementById('service-search');
+    const searchQuery = searchInput ? searchInput.value : "";
+
+    console.log("Button clicked! Searching for:", searchQuery);
+
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(position => {
+        const { latitude, longitude } = position.coords;
+
+        // Build the URL with the service query
+        const url = `/api/nearby-providers/?lat=${latitude}&lon=${longitude}&service=${encodeURIComponent(searchQuery)}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                console.log("Providers received:", data.providers);
+                // Ensure you have a function named renderProviders to show the cards
+                if (typeof renderProviders === "function") {
+                    renderProviders(data.providers);
+                }
+            })
+            .catch(err => console.error("Fetch error:", err));
+    }, error => {
+        console.error("Geolocation error:", error);
+        alert("Please allow location access to find nearby pros.");
+    });
+}
+
+    // 2. Your existing render function
+
+function renderProviders(providers) {
+    const resultsContainer = document.getElementById('providers-results');
+    const countBadge = document.getElementById('results-count');
+
+    if (!resultsContainer) return;
+
+    resultsContainer.innerHTML = ''; // Clear previous
+    if (countBadge) countBadge.innerText = `${providers.length} found`;
+
+    if (providers.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-geo-alt text-muted fs-1"></i>
+                <p class="text-muted mt-3">No providers found for this service within 3km.</p>
+            </div>`;
+        return;
+    }
+
+    resultsContainer.innerHTML = providers.map(p => {
+        const photoUrl = p.photo ? p.photo : 'https://via.placeholder.com/300?text=No+Photo';
+        const rating = p.rating > 0 ? `<i class="bi bi-star-fill text-warning me-1"></i> ${p.rating}` : 'New Provider';
+
+        return `
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                    <img src="${photoUrl}" class="card-img-top" style="height: 180px; object-fit: cover;">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <h5 class="fw-bold mb-0">${p.name}</h5>
+                            <div class="small fw-bold text-warning">${rating}</div>
+                        </div>
+                        <p class="text-primary fw-semibold small mb-2">${p.service}</p>
+                        <div class="small text-muted mb-3">
+                            <i class="bi bi-geo-alt me-1"></i>${p.distance_km}km away
+                        </div>
+                        <button onclick="openRequestModal(${p.id}, '${p.name}')" class="btn btn-primary w-100 rounded-pill fw-bold">
+                            Book Now
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+}
+function fetchBookings() {
+    fetch('/api/my-bookings/')
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('bookings-table-body');
+            tbody.innerHTML = data.map(b => `
+                <tr>
+                    <td>${b.provider}</td>
+                    <td>${b.total_fee}</td>
+                    <td><span class="badge bg-info text-dark">${b.status}</span></td>
+                </tr>
+            `).join('');
+        });
+}
+
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition);
+    } else {
+        alert("Geolocation is not supported by this browser.");
+    }
+}
+
+function showPosition(position) {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+
+    fetch(`/api/nearby-providers/?lat=${lat}&lon=${lon}`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('provider-results');
+            container.innerHTML = ''; // Clear previous
+
+            if (data.providers.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning text-center w-100">No providers found within 3km.</div>';
+                return;
+            }
+
+          data.providers.forEach(p => {
+                let starsHtml = '';
+                const ratingValue = Math.round(p.rating) || 0;
+                const reviewCount = p.review_count || 0;
+
+                if (ratingValue > 0) {
+                    for (let i = 0; i < ratingValue; i++) {
+                        starsHtml += '<i class="bi bi-star-fill text-warning me-1"></i>';
+                    }
+                    for (let i = ratingValue; i < 5; i++) {
+                        starsHtml += '<i class="bi bi-star text-muted me-1"></i>';
+                    }
+                    // Add the count in parentheses
+                    starsHtml += `<span class="text-muted small ms-1">(${reviewCount})</span>`;
+                } else {
+                    starsHtml = '<span class="text-muted small">New Provider</span>';
+                }
+
+                // Insert into the card template as before...
+                container.innerHTML += `
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                            <img src="${p.photo || 'https://via.placeholder.com/300'}" class="card-img-top" style="height: 180px; object-fit: cover;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h5 class="fw-bold mb-0">${p.name}</h5>
+                                    <div class="d-flex align-items-center">${starsHtml}</div>
+                                </div>
+                                <p class="text-primary fw-semibold small mb-2"></i> ${p.service}</p>
+                                <div class="small text-muted mb-3">
+                                    {#<div><i class="bi bi-telephone me-2"></i>${p.phone}</div>#}
+                                    <div><i class="bi bi-geo-alt me-2"></i>${p.distance_km}km away</div>
+                                </div>
+                                <button onclick="openRequestModal(${p.id}, '${p.name}')" class="btn btn-primary w-100 rounded-pill fw-bold">
+                                    Book Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+        });
+}
+
+let requestModal;
+document.addEventListener('DOMContentLoaded', () => {
+    requestModal = new bootstrap.Modal(document.getElementById('requestModal'));
+});
+
+function openRequestModal(id, name) {
+    document.getElementById('req-provider-id').value = id;
+    document.getElementById('req-provider-name').innerText = name;
+    requestModal.show();
+}
+
+async function submitRequest() {
+    const btn = event.target; // Get the clicked button
+    const originalText = btn.innerText;
+    const providerId = document.getElementById('req-provider-id').value;
+    const desc = document.getElementById('service-description').value;
+    const photoInput = document.getElementById('problem-photo');
+
+    if (!desc) return alert("Please describe the problem.");
+
+    // Disable button and show loading state
+    btn.disabled = true;
+    btn.innerText = "Capturing location...";
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+            // Fetch address name
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+            const geoData = await geoRes.json();
+            const locationName = geoData.display_name;
+
+            const formData = new FormData();
+            formData.append('description', desc);
+            formData.append('location_name', locationName);
+            if (photoInput.files[0]) {
+                formData.append('problem_photo', photoInput.files[0]);
+            }
+
+            const response = await fetch(`/api/book/${providerId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: formData
+            });
+
+            if (response.ok) {
+                alert("Request sent! Provider notified of your location at: " + locationName);
+                location.reload();
+            }
+        } catch (error) {
+            btn.disabled = false;
+            btn.innerText = originalText;
+            alert("Error capturing location. Please check your internet connection.");
+        }
+    }, (error) => {
+        btn.disabled = false;
+        btn.innerText = originalText;
+        alert("Please enable GPS to send your location to the provider.");
+    });
+}
+
+
+
+</script>
+{% endblock %}

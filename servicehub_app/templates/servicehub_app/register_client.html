@@ -1,0 +1,40 @@
+{% extends 'servicehub_app/base.html' %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow border-0">
+            <div class="card-body p-4">
+                <h3 class="text-center mb-4">Create Client Account</h3>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold">{{ field.label }}</label>
+                            {# We render the field but ignore field.help_text #}
+                            <input type="{{ field.field.widget.input_type }}"
+                                   name="{{ field.name }}"
+                                   class="form-control {% if field.errors %}is-invalid{% endif %}"
+                                   required>
+
+                            {% if field.errors %}
+                                <div class="invalid-feedback">
+                                    {{ field.errors|striptags }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+
+                    <button type="submit" class="btn btn-success w-100 mt-3">Register as Client</button>
+                </form>
+
+                <div class="mt-3 text-center">
+                    <p class="small text-muted">Already have an account? <a href="{% url 'login' %}">Login</a></p>
+                    <p class="small">Want to work? <a href="{% url 'apply_provider' %}">Apply as a Provider</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'servicehub_app/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white p-4 text-center">
+                    <h2 class="mb-0">Provider Application Hub</h2>
+                    <p class="mb-0">Join our digital marketplace of local experts</p>
+                </div>
+                <div class="card-body p-5">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="mb-4">
+                            <h5 class="text-primary border-bottom pb-2 mb-3">1. Account Credentials</h5>
+                            <div class="row g-3">
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Username</label>
+                                    <input type="text" name="username" class="form-control" placeholder="Unique username" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Password</label>
+                                    <input type="password" name="password" class="form-control" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">First Name</label>
+                                    <input type="text" name="first_name" class="form-control" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Last Name</label>
+                                    <input type="text" name="last_name" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Profile Photo</label>
+                                    <input type="file" name="profile_photo" class="form-control" accept="image/*" required>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="mb-4">
+                            <h5 class="text-primary border-bottom pb-2 mb-3">2. Service Information</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Specialization</label>
+                                    <select name="service_type" class="form-select" required>
+                                        <option value="" selected disabled>Choose your trade...</option>
+                                        <option value="Plumbing">Plumbing</option>
+                                        <option value="Carpentry">Carpentry</option>
+                                        <option value="Electrical">Electrical</option>
+                                        <option value="Laundry">Laundry</option>
+                                        <option value="Masonry">Masonry</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Phone (M-Pesa registered)</label>
+                                    <input type="text" name="phone_number" class="form-control" placeholder="07XXXXXXXX" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Professional Bio</label>
+                                    <textarea name="bio" class="form-control" rows="3" placeholder="Tell us about your years of experience..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h5 class="text-primary border-bottom pb-2 mb-3">3. Work Location</h5>
+                            <p class="text-muted small">We need your coordinates to match you with clients within a 3km radius.</p>
+                            <div class="input-group mb-3">
+                                <input type="text" id="lat" name="lat" class="form-control" placeholder="Latitude" readonly required>
+                                <input type="text" id="lon" name="lon" class="form-control" placeholder="Longitude" readonly required>
+                                <button type="button" onclick="getProviderLocation()" class="btn btn-dark">Get Current Location</button>
+                            </div>
+                            <div id="loc-alert" class="alert alert-secondary d-none">Location Captured!</div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg">Submit Application</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getProviderLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            document.getElementById('lat').value = pos.coords.latitude;
+            document.getElementById('lon').value = pos.coords.longitude;
+            document.getElementById('loc-alert').classList.remove('d-none');
+        }, (err) => {
+            alert("Error getting location: " + err.message);
+        });
+    }
+}
+</script>
+{% endblock %}

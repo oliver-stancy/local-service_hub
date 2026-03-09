@@ -1,0 +1,18 @@
+{% extends "admin/change_list.html" %}
+{% block content_title %}
+    {{ block.super }}
+    <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px; display: flex; gap: 40px;">
+        <div>
+            <strong style="color: #666;">GROSS REVENUE:</strong>
+            <h2 style="margin: 0; color: #264b5d;">KES {{ total_revenue }}</h2>
+        </div>
+        <div>
+            <strong style="color: #666;">PLATFORM RETENTION (10%):</strong>
+            <h2 style="margin: 0; color: #28a745;">KES {{ net_retention }}</h2>
+        </div>
+        <div>
+            <strong style="color: #666;">PROVIDER PAYOUTS (90%):</strong>
+            <h2 style="margin: 0; color: #17a2b8;">KES {{ provider_payouts }}</h2>
+        </div>
+    </div>
+{% endblock %}

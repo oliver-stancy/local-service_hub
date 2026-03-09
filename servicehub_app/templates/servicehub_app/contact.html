@@ -1,0 +1,89 @@
+{% extends 'servicehub_app/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row g-5">
+        <div class="col-md-4">
+            <div class="bg-primary text-white p-5 rounded-4 h-100 shadow">
+                <h3 class="fw-bold mb-4">Contact Us</h3>
+                <p class="opacity-75 mb-5">Have a complain or feedback? Our team at Local Service Hub is here to help.</p>
+
+                <div class="d-flex mb-4">
+                    <i class="bi bi-geo-alt-fill fs-4 me-3"></i>
+                    <div>
+                        <h6 class="mb-0 fw-bold">Location</h6>
+                        <small>123 Tech Plaza, Kisii, Kenya</small>
+                    </div>
+                </div>
+
+                <div class="d-flex mb-4">
+                    <i class="bi bi-telephone-fill fs-4 me-3"></i>
+                    <div>
+                        <h6 class="mb-0 fw-bold">Phone</h6>
+                        <small>+254 700 000 000</small>
+                    </div>
+                </div>
+
+                <div class="d-flex">
+                    <i class="bi bi-envelope-at-fill fs-4 me-3"></i>
+                    <div>
+                        <h6 class="mb-0 fw-bold">Email</h6>
+                        <small>support@localservicehub.com</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-lg-5">
+                <h2 class="fw-bold mb-4">File a Complain</h2>
+                <form id="complaintForm">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email Address</label>
+                            <input type="email" id="email" class="form-control rounded-pill" value="{{ request.user.email }}" >
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Subject</label>
+                            <input type="text" id="subject" class="form-control rounded-pill" placeholder="E.g., Payment issue" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Message</label>
+                            <textarea id="message" class="form-control rounded-4" rows="5" placeholder="Describe your issue in detail..." required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm">
+                                Submit Complain
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    document.getElementById('complaintForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const payload = {
+        email: document.getElementById('email').value,
+        subject: document.getElementById('subject').value,
+        message: document.getElementById('message').value
+    };
+
+    fetch('/api/submit-feedback/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        location.reload();
+    });
+});
+</script>
+{% endblock %}
